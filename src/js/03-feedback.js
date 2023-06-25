@@ -1,58 +1,37 @@
-const form = document.querySelector('.feedback-form');
-const emailInput = form.querySelector('input[name="email"]');
-const messageInput = form.querySelector('textarea[name="message"]');
-let saveFormStateTimeout;
+import throttle from 'lodash.throttle';
 
-const saveFormState = () => {
-  const formState = {
-    email: emailInput.value,
-    message: messageInput.value,
-  };
-  localStorage.setItem('feedback-form-state', JSON.stringify(formState));
-};
+const LOCAL_KEY = 'feedback-form-state';
 
-const throttle = (callback, delay) => {
-  let previousCall = new Date().getTime();
-  return function () {
-    const time = new Date().getTime();
-    if (time - previousCall >= delay) {
-      previousCall = time;
-      callback.apply(null, arguments);
-    }
-  };
-};
+form = document.querySelector('.feedback-form');
 
-const throttledSaveFormState = throttle(saveFormState, 1000);
+form.addEventListener('input', throttle(onInputData, 500));
+form.addEventListener('submit', onFormSubmit);
 
-const loadFormState = () => {
-  const savedState = localStorage.getItem('feedback-form-state');
-  if (savedState) {
-    const formState = JSON.parse(savedState);
-    emailInput.value = formState.email;
-    messageInput.value = formState.message;
+let dataForm = JSON.parse(localStorage.getItem(LOCAL_KEY)) || {};
+const { email, message } = form.elements;
+reloadPage();
+
+function onInputData(e) {
+  dataForm = { email: email.value, message: message.value };
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(dataForm));
+}
+
+function reloadPage() {
+  if (dataForm) {
+    email.value = dataForm.email || '';
+    message.value = dataForm.message || '';
   }
-};
+}
 
-const clearFormState = () => {
-  localStorage.removeItem('feedback-form-state');
-  emailInput.value = '';
-  messageInput.value = '';
-};
+function onFormSubmit(e) {
+  e.preventDefault();
+  console.log({ email: email.value, message: message.value });
 
-form.addEventListener('input', () => {
-  clearTimeout(saveFormStateTimeout);
-  saveFormStateTimeout = setTimeout(throttledSaveFormState, 1000);
-});
+  if (email.value === '' || message.value === '') {
+    return alert('Please fill in all the fields!');
+  }
 
-form.addEventListener('submit', event => {
-  event.preventDefault();
-  console.log({
-    email: emailInput.value,
-    message: messageInput.value,
-  });
-  clearFormState();
-});
-
-window.addEventListener('DOMContentLoaded', loadFormState);
-
-window.addEventListener('unload', saveFormState);
+  localStorage.removeItem(LOCAL_KEY);
+  e.currentTarget.reset();
+  dataForm = {};
+}
